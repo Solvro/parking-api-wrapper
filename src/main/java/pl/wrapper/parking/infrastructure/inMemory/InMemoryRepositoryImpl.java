@@ -74,7 +74,7 @@ public abstract class InMemoryRepositoryImpl<K extends Serializable, V extends S
         }
     }
 
-    @Scheduled(fixedRateString = "#{60 * 100 * ${serialization.timeStamp.inMinutes}}")
+    @Scheduled(fixedRateString = "#{60 * 1000 * ${serialization.timeStamp.inMinutes}}")
     protected void periodicSerialize() {
         selfSerialize();
     }
