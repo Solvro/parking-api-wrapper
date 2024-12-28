@@ -7,7 +7,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class ParkingEndpointRepositoryTest {
+class ParkingRequestRepositoryTest {
 
     private InMemoryRepositoryTest inMemoryRepository;
     private Integer id;
