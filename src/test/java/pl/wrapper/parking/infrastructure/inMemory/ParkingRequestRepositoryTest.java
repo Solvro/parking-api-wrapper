@@ -1,42 +1,23 @@
 package pl.wrapper.parking.infrastructure.inMemory;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import pl.wrapper.parking.infrastructure.inMemory.dto.ParkingRequest;
+import pl.wrapper.parking.infrastructure.inMemory.dto.RequestStatus;
 
-class ParkingRequestRepositoryTest {
-
-    private InMemoryRepositoryTest inMemoryRepository;
-    private Integer id;
-    private DummyObject object;
+public class ParkingRequestRepositoryTest {
+    private ParkingRequestRepository parkingRequestRepository;
     private static final String path = "data/statistics/tests";
-
-    static class InMemoryRepositoryTest extends ParkingDataRepository {
-        public InMemoryRepositoryTest() {
-            super(path);
-        }
-
-        public void testSerialize() {
-            periodicSerialize();
-        }
-
-        public void testDeserialize() {
-            init();
-        }
-
-        public void deleteData() {
-            dataMap.clear();
-        }
-    }
 
     @BeforeEach
     void setUp() {
-        inMemoryRepository = new InMemoryRepositoryTest();
-        object = new DummyObject();
-        id = 10;
+        parkingRequestRepository = new ParkingRequestRepository(path);
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
@@ -47,25 +28,27 @@ class ParkingRequestRepositoryTest {
     }
 
     @Test
-    void shouldReturnObject() {
-        inMemoryRepository.add(id, object);
+    void createUpdateGetEntry() {
+        LocalDateTime dateTime = LocalDateTime.of(2024, 12, 30, 12, 11);
+        ParkingRequest parkingRequest = new ParkingRequest(dateTime, RequestStatus.SUCCESS, 912L);
+        parkingRequestRepository.add(dateTime, parkingRequest);
+        assertTrue(parkingRequestRepository.fetchAllKeys().contains(dateTime));
+        assertEquals(parkingRequestRepository.get(dateTime), parkingRequest);
 
-        int first = inMemoryRepository.fetchAllKeys().stream().findFirst().orElseThrow();
+        dateTime = LocalDateTime.of(2024, 12, 28, 5, 56, 12);
+        parkingRequest = new ParkingRequest(dateTime, RequestStatus.PENDING, null);
+        parkingRequestRepository.add(dateTime, parkingRequest);
+        assertTrue(parkingRequestRepository.fetchAllKeys().contains(dateTime));
+        assertEquals(parkingRequestRepository.get(dateTime), parkingRequest);
 
-        assertEquals(first, id);
-        assertEquals(inMemoryRepository.get(first), object);
-    }
+        parkingRequest = new ParkingRequest(null, RequestStatus.FAILED, 405L);
+        parkingRequestRepository.add(null, parkingRequest);
+        assertTrue(parkingRequestRepository.fetchAllKeys().contains(null));
+        assertEquals(parkingRequestRepository.get(null), parkingRequest);
 
-    @Test
-    void shouldSerializationRunCorrectly() {
-        inMemoryRepository.add(id, object);
-
-        inMemoryRepository.testSerialize();
-        inMemoryRepository.deleteData();
-
-        assertTrue(inMemoryRepository.fetchAllKeys().isEmpty());
-
-        inMemoryRepository.testDeserialize();
-        assertEquals(inMemoryRepository.get(id).s, object.s);
+        parkingRequest = new ParkingRequest(dateTime, RequestStatus.SUCCESS, 53L);
+        parkingRequestRepository.add(dateTime, parkingRequest);
+        assertTrue(parkingRequestRepository.fetchAllKeys().contains(dateTime));
+        assertEquals(parkingRequestRepository.get(dateTime), parkingRequest);
     }
 }
