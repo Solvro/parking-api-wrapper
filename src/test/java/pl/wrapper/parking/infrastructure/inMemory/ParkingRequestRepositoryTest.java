@@ -30,23 +30,17 @@ public class ParkingRequestRepositoryTest {
     @Test
     void createUpdateGetEntry() {
         LocalDateTime dateTime = LocalDateTime.of(2024, 12, 30, 12, 11);
-        ParkingRequest parkingRequest = new ParkingRequest(dateTime, RequestStatus.SUCCESS, 912L);
+        ParkingRequest parkingRequest = new ParkingRequest(dateTime, RequestStatus.SUCCESS, "/api/v1");
         parkingRequestRepository.add(dateTime, parkingRequest);
         assertTrue(parkingRequestRepository.fetchAllKeys().contains(dateTime));
         assertEquals(parkingRequestRepository.get(dateTime), parkingRequest);
 
-        dateTime = LocalDateTime.of(2024, 12, 28, 5, 56, 12);
-        parkingRequest = new ParkingRequest(dateTime, RequestStatus.PENDING, null);
-        parkingRequestRepository.add(dateTime, parkingRequest);
-        assertTrue(parkingRequestRepository.fetchAllKeys().contains(dateTime));
-        assertEquals(parkingRequestRepository.get(dateTime), parkingRequest);
-
-        parkingRequest = new ParkingRequest(null, RequestStatus.FAILED, 405L);
+        parkingRequest = new ParkingRequest(null, RequestStatus.FAILED, "");
         parkingRequestRepository.add(null, parkingRequest);
         assertTrue(parkingRequestRepository.fetchAllKeys().contains(null));
         assertEquals(parkingRequestRepository.get(null), parkingRequest);
 
-        parkingRequest = new ParkingRequest(dateTime, RequestStatus.SUCCESS, 53L);
+        parkingRequest = new ParkingRequest(dateTime, RequestStatus.SUCCESS, null);
         parkingRequestRepository.add(dateTime, parkingRequest);
         assertTrue(parkingRequestRepository.fetchAllKeys().contains(dateTime));
         assertEquals(parkingRequestRepository.get(dateTime), parkingRequest);

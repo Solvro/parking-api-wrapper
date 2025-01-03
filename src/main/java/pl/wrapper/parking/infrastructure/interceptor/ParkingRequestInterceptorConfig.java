@@ -14,6 +14,7 @@ public class ParkingRequestInterceptorConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new ParkingRequestInterceptor(parkingRequestRepository))
-                .addPathPatterns("/parkings/**");
+                .addPathPatterns("/parkings/**")
+                .excludePathPatterns("/parkings/stats/**");
     }
 }
