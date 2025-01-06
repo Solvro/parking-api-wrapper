@@ -10,17 +10,23 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.constraints.Min;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import pl.wrapper.parking.facade.ParkingService;
+import pl.wrapper.parking.facade.dto.RequestStatsResponse;
 import pl.wrapper.parking.infrastructure.error.ErrorWrapper;
 import pl.wrapper.parking.infrastructure.error.Result;
 import pl.wrapper.parking.pwrResponseHandler.dto.ParkingResponse;
@@ -29,9 +35,34 @@ import pl.wrapper.parking.pwrResponseHandler.dto.ParkingResponse;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
+@Validated
 @Tag(name = "Parking API", description = "API for managing parking-related operations")
 public class ParkingController {
     private final ParkingService parkingService;
+
+    @GetMapping(path = "/stats/requests", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<RequestStatsResponse> getBasicRequestStats(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+        log.info("Fetching parking requests stats with time range: start = {}, end = {}", start, end);
+        RequestStatsResponse result = parkingService.getBasicRequestStats(start, end);
+        return new ResponseEntity<>(result, HttpStatus.OK);
+    }
+
+    @GetMapping(path = "/stats/requests/peak-times", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Map.Entry<String, Double>>> getRequestPeakTimes(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            @RequestParam(required = false, name = "timeframe") @Min(1) Integer timeframeLengthInMinutes) {
+        log.info(
+                "Fetching peak request times with time range: start = {}, end = {} and timeframe length = {}min",
+                start,
+                end,
+                timeframeLengthInMinutes);
+        List<Map.Entry<String, Double>> result =
+                parkingService.getRequestPeakTimes(start, end, timeframeLengthInMinutes);
+        return new ResponseEntity<>(result, HttpStatus.OK);
+    }
 
     @Operation(summary = "get list of parking lots with free spots from all/opened/closed parking lots")
     @ApiResponse(

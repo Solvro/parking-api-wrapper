@@ -1,22 +1,57 @@
 package pl.wrapper.parking.facade.domain;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import pl.wrapper.parking.facade.ParkingService;
 import pl.wrapper.parking.facade.dto.NominatimLocation;
+import pl.wrapper.parking.facade.dto.RequestStatsResponse;
 import pl.wrapper.parking.infrastructure.error.ParkingError;
 import pl.wrapper.parking.infrastructure.error.Result;
+import pl.wrapper.parking.infrastructure.inMemory.ParkingRequestRepository;
+import pl.wrapper.parking.infrastructure.inMemory.dto.ParkingRequest;
+import pl.wrapper.parking.infrastructure.inMemory.dto.RequestStatus;
 import pl.wrapper.parking.infrastructure.nominatim.client.NominatimClient;
 import pl.wrapper.parking.pwrResponseHandler.PwrApiServerCaller;
 import pl.wrapper.parking.pwrResponseHandler.dto.ParkingResponse;
 
 @Service
 @Slf4j
-public record ParkingServiceImpl(PwrApiServerCaller pwrApiServerCaller, NominatimClient nominatimClient)
+public record ParkingServiceImpl(
+        PwrApiServerCaller pwrApiServerCaller,
+        NominatimClient nominatimClient,
+        ParkingRequestRepository requestRepository,
+        @Value("${default.timeframe.length.inMinutes}") int defaultTimeframeLength)
         implements ParkingService {
+
+    @Override
+    public RequestStatsResponse getBasicRequestStats(LocalDateTime start, LocalDateTime end) {
+        List<ParkingRequest> requests = requestRepository.values().stream()
+                .filter(generatePredicateToParkingRequestForParams(start, end))
+                .toList();
+        return calculateBasicRequestStats(requests);
+    }
+
+    @Override
+    public List<Map.Entry<String, Double>> getRequestPeakTimes(
+            LocalDateTime start, LocalDateTime end, Integer timeframeLengthInMinutes) {
+        int timeframeLength = Optional.ofNullable(timeframeLengthInMinutes).orElse(defaultTimeframeLength);
+        List<ParkingRequest> requests = requestRepository.values().stream()
+                .filter(generatePredicateToParkingRequestForParams(start, end))
+                .toList();
+        return calculatePeakRequestTimes(requests, timeframeLength, start, end);
+    }
 
     @Override
     public List<ParkingResponse> getAllWithFreeSpots(Boolean opened) {
@@ -132,5 +167,149 @@ public record ParkingServiceImpl(PwrApiServerCaller pwrApiServerCaller, Nominati
         if (hasFreeSpots != null) predicate = predicate.and(parking -> hasFreeSpots == (parking.freeSpots() > 0));
 
         return predicate;
+    }
+
+    private Predicate<ParkingRequest> generatePredicateToParkingRequestForParams(
+            LocalDateTime start, LocalDateTime end) {
+        Predicate<ParkingRequest> predicate = parkingRequest -> true;
+        if (start != null)
+            predicate =
+                    predicate.and(parkingRequest -> !parkingRequest.timestamp().isBefore(start));
+        if (end != null)
+            predicate =
+                    predicate.and(parkingRequest -> !parkingRequest.timestamp().isAfter(end));
+
+        return predicate;
+    }
+
+    private RequestStatsResponse calculateBasicRequestStats(List<ParkingRequest> requests) {
+        log.info("Calculating request stats for matching requests: {}", requests);
+
+        long totalRequests = requests.size();
+        double requestSuccessRate = calculateSuccessRate(requests, totalRequests);
+
+        Map<String, Long> requestForEndpoint = requests.stream()
+                .collect(Collectors.groupingBy(
+                        req -> Optional.ofNullable(req.requestURI()).orElse("UNKNOWN"), Collectors.counting()));
+
+        return new RequestStatsResponse(totalRequests, requestSuccessRate, requestForEndpoint);
+    }
+
+    private double calculateSuccessRate(List<ParkingRequest> requests, long totalRequests) {
+        if (totalRequests == 0) return 0.0;
+
+        long successfulRequests = requests.stream()
+                .filter(request -> request.requestStatus() == RequestStatus.SUCCESS)
+                .count();
+
+        return BigDecimal.valueOf((double) successfulRequests / totalRequests * 100)
+                .setScale(2, RoundingMode.HALF_UP)
+                .doubleValue();
+    }
+
+    private List<Map.Entry<String, Double>> calculatePeakRequestTimes(
+            List<ParkingRequest> requests, int timeframeLengthInMinutes, LocalDateTime start, LocalDateTime end) {
+        log.info(
+                "Calculating peak request times for matching requests: {} and timeframeLength = {}min",
+                requests,
+                timeframeLengthInMinutes);
+
+        int timeframesCount = calculateTimeframesCount(timeframeLengthInMinutes);
+        int[] requestsCount = new int[timeframesCount];
+
+        Function<LocalDateTime, Integer> mapToTimeframeIndex = createTimeframeToIndexMapper(timeframeLengthInMinutes);
+
+        start = Optional.ofNullable(start).orElseGet(() -> findMinTimestamp(requests));
+        end = Optional.ofNullable(end).orElseGet(() -> findMaxTimestamp(requests));
+
+        long daysValue = ChronoUnit.DAYS.between(start, end);
+
+        requests.forEach(request -> requestsCount[mapToTimeframeIndex.apply(request.timestamp())]++);
+
+        Map<String, Double> averageRequestsPerTimeframe = calculateAverageRequestsPerTimeframe(
+                timeframesCount, requestsCount, timeframeLengthInMinutes, start, end, daysValue, mapToTimeframeIndex);
+
+        return averageRequestsPerTimeframe.entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .limit(3)
+                .toList();
+    }
+
+    private int calculateTimeframesCount(int timeframeLengthInMinutes) {
+        return (int) Math.ceil((double) 60 * 24 / timeframeLengthInMinutes);
+    }
+
+    private Function<LocalDateTime, Integer> createTimeframeToIndexMapper(int timeframeLengthInMinutes) {
+        return timestamp -> {
+            long minutesFromMidnight = ChronoUnit.MINUTES.between(LocalTime.MIDNIGHT, timestamp);
+            return (int) minutesFromMidnight / timeframeLengthInMinutes;
+        };
+    }
+
+    private LocalDateTime findMinTimestamp(List<ParkingRequest> requests) {
+        return requests.stream()
+                .min(Comparator.comparing(ParkingRequest::timestamp))
+                .map(ParkingRequest::timestamp)
+                .orElse(LocalDateTime.now());
+    }
+
+    private LocalDateTime findMaxTimestamp(List<ParkingRequest> requests) {
+        return requests.stream()
+                .max(Comparator.comparing(ParkingRequest::timestamp))
+                .map(ParkingRequest::timestamp)
+                .orElse(LocalDateTime.now());
+    }
+
+    private Map<String, Double> calculateAverageRequestsPerTimeframe(
+            int timeframesCount,
+            int[] requestsCount,
+            int timeframeLengthInMinutes,
+            LocalDateTime start,
+            LocalDateTime end,
+            long daysValue,
+            Function<LocalDateTime, Integer> mapToTimeframeIndex) {
+        Map<String, Double> averageRequestsPerTimeframe = new LinkedHashMap<>();
+
+        for (int i = 0; i < timeframesCount; i++) {
+            LocalTime startTime = LocalTime.MIDNIGHT.plusMinutes((long) i * timeframeLengthInMinutes);
+            LocalTime endTime = calculateEndTime(startTime, timeframeLengthInMinutes, i, timeframesCount);
+
+            String timeframeKey = formatTimeframeKey(startTime, endTime);
+            long effectiveDays =
+                    isIndexBetweenCircular(i, mapToTimeframeIndex.apply(start), mapToTimeframeIndex.apply(end))
+                            ? daysValue
+                            : daysValue - 1;
+
+            double average = effectiveDays > 0 ? requestsCount[i] / (double) effectiveDays : 0.0;
+            averageRequestsPerTimeframe.put(
+                    timeframeKey,
+                    BigDecimal.valueOf(average)
+                            .setScale(3, RoundingMode.HALF_UP)
+                            .doubleValue());
+        }
+
+        return averageRequestsPerTimeframe;
+    }
+
+    private LocalTime calculateEndTime(
+            LocalTime startTime, int timeframeLengthInMinutes, int index, int timeframesCount) {
+        LocalTime endTime = startTime.plusMinutes(timeframeLengthInMinutes - 1);
+        if (index == timeframesCount - 1) {
+            endTime = LocalTime.of(23, 59);
+        }
+        return endTime;
+    }
+
+    private String formatTimeframeKey(LocalTime start, LocalTime end) {
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+        return dateTimeFormatter.format(start) + " - " + dateTimeFormatter.format(end);
+    }
+
+    private boolean isIndexBetweenCircular(int index, int fromIndex, int toIndex) {
+        if (fromIndex <= toIndex) {
+            return index >= fromIndex && index <= toIndex;
+        } else {
+            return index >= fromIndex || index <= toIndex;
+        }
     }
 }

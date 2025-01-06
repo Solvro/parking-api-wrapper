@@ -1,6 +1,7 @@
 package pl.wrapper.parking.infrastructure.inMemory;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.HashMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -14,5 +15,9 @@ public class ParkingRequestRepository extends InMemoryRepositoryImpl<LocalDateTi
                 saveToLocationPath, // to modify location path, change above @Value's value
                 new HashMap<>(), // put here whatever map type you want
                 null); // Add default value here (empty object probably)
+    }
+
+    public Collection<ParkingRequest> values() {
+        return dataMap.values();
     }
 }
