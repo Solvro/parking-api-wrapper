@@ -2,7 +2,6 @@ package pl.wrapper.parking.infrastructure.exception;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.serializer.support.SerializationFailedException;
@@ -80,16 +79,6 @@ class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         ErrorWrapper errorWrapper = new ErrorWrapper(e.getMessage(), status, request.getRequestURI(), status);
         logError(e.getMessage(), request.getRequestURI(), e);
-        return new ResponseEntity<>(errorWrapper, status);
-    }
-
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ErrorWrapper> handleArgumentValidationException(
-            ConstraintViolationException e, HttpServletRequest request) {
-        HttpStatus status = HttpStatus.BAD_REQUEST;
-        String message = "Argument validation error";
-        ErrorWrapper errorWrapper = new ErrorWrapper(message, status, request.getRequestURI(), status);
-        logError(message, request.getRequestURI(), e);
         return new ResponseEntity<>(errorWrapper, status);
     }
 

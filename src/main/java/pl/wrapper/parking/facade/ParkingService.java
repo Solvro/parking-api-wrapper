@@ -1,18 +1,20 @@
 package pl.wrapper.parking.facade;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import org.springframework.lang.Nullable;
-import pl.wrapper.parking.facade.dto.RequestStatsResponse;
+import pl.wrapper.parking.facade.dto.EndpointStats;
 import pl.wrapper.parking.infrastructure.error.Result;
 import pl.wrapper.parking.pwrResponseHandler.dto.ParkingResponse;
 
 public interface ParkingService {
-    RequestStatsResponse getBasicRequestStats(LocalDateTime start, LocalDateTime end);
+    Map<String, EndpointStats> getBasicRequestStats();
 
-    List<Map.Entry<String, Double>> getRequestPeakTimes(
-            LocalDateTime start, LocalDateTime end, Integer timeframeLengthInMinutes);
+    Map<String, List<Map.Entry<String, Double>>> getRequestStatsForTimes();
+
+    List<Map.Entry<String, Double>> getRequestPeakTimes();
+
+    Map<String, Double> getDailyRequestStats();
 
     List<ParkingResponse> getAllWithFreeSpots(@Nullable Boolean opened);
 
