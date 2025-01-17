@@ -3,6 +3,7 @@ package pl.wrapper.parking.infrastructure.inMemory;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.*;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -21,6 +22,10 @@ public abstract class InMemoryRepositoryImpl<K extends Serializable, V extends S
         this.defaultValue = defaultValue;
 
         this.dataMap = map;
+    }
+
+    public Collection<V> values() {
+        return dataMap.values();
     }
 
     @Override
@@ -74,7 +79,7 @@ public abstract class InMemoryRepositoryImpl<K extends Serializable, V extends S
         }
     }
 
-    @Scheduled(fixedRateString = "#{60 * 100 * ${serialization.timeStamp.inMinutes}}")
+    @Scheduled(fixedRateString = "#{60 * 1000 * ${serialization.timeStamp.inMinutes}}")
     protected void periodicSerialize() {
         selfSerialize();
     }
