@@ -48,8 +48,8 @@ public abstract class InMemoryRepositoryImpl<K extends Serializable, V extends S
     protected void init() {
         if (!file.exists()) return;
 
-        try (FileInputStream fileOut = new FileInputStream(file);
-                ObjectInputStream in = new ObjectInputStream(fileOut)) {
+        try (FileInputStream fileIn = new FileInputStream(file);
+                ObjectInputStream in = new ObjectInputStream(fileIn)) {
 
             this.dataMap = (Map<K, V>) in.readObject();
         } catch (IOException | ClassNotFoundException e) {
@@ -65,8 +65,8 @@ public abstract class InMemoryRepositoryImpl<K extends Serializable, V extends S
                 throw new SerializationFailedException(
                         "Failed to create directory for path: " + file.getAbsolutePath());
 
-        try (FileOutputStream fileOut = new FileOutputStream(file)) {
-            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+        try (FileOutputStream fileOut = new FileOutputStream(file);
+                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
 
             out.writeObject(dataMap);
         } catch (IOException e) {
@@ -74,7 +74,7 @@ public abstract class InMemoryRepositoryImpl<K extends Serializable, V extends S
         }
     }
 
-    @Scheduled(fixedRateString = "#{60 * 100 * ${serialization.timeStamp.inMinutes}}")
+    @Scheduled(fixedRateString = "#{60 * 1000 * ${serialization.timeStamp.inMinutes}}", initialDelay = 10 * 1000)
     protected void periodicSerialize() {
         selfSerialize();
     }

@@ -46,8 +46,8 @@ class ResultTest {
 
         Integer status = mvcResult.getResponse().getStatus(); // get response status
 
-        Integer OkStatus = 200;
-        assertEquals(status, OkStatus); // check status
+        Integer okStatus = 200;
+        assertEquals(okStatus, status); // check status
     }
 
     @Test

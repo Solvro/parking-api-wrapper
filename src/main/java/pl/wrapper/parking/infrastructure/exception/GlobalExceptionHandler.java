@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import pl.wrapper.parking.infrastructure.error.ErrorWrapper;
 
 @ControllerAdvice
@@ -22,6 +23,16 @@ class GlobalExceptionHandler {
         String message = "An error has occurred";
         ErrorWrapper errorWrapper = new ErrorWrapper(message, status, request.getRequestURI(), status);
         logError(message, request.getRequestURI(), e);
+        return new ResponseEntity<>(errorWrapper, status);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorWrapper> handleMethodArgumentTypeMismatchException(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        String message = "Argument type mismatch";
+        ErrorWrapper errorWrapper = new ErrorWrapper(message, status, request.getRequestURI(), status);
+        logError(message, request.getRequestURI(), ex);
         return new ResponseEntity<>(errorWrapper, status);
     }
 

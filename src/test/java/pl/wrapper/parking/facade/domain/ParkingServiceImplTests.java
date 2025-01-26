@@ -2,7 +2,6 @@ package pl.wrapper.parking.facade.domain;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.Mockito.*;
 
 import java.time.LocalTime;
@@ -18,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import pl.wrapper.parking.facade.dto.NominatimLocation;
 import pl.wrapper.parking.infrastructure.error.ParkingError;
 import pl.wrapper.parking.infrastructure.error.Result;
+import pl.wrapper.parking.infrastructure.inMemory.ParkingDataRepository;
 import pl.wrapper.parking.infrastructure.nominatim.client.NominatimClient;
 import pl.wrapper.parking.pwrResponseHandler.PwrApiServerCaller;
 import pl.wrapper.parking.pwrResponseHandler.dto.Address;
@@ -31,6 +31,9 @@ public class ParkingServiceImplTests {
 
     @Mock
     private NominatimClient nominatimClient;
+
+    @Mock
+    private ParkingDataRepository dataRepository;
 
     @InjectMocks
     private ParkingServiceImpl parkingService;

@@ -2,8 +2,6 @@ package pl.wrapper.parking.infrastructure.nominatim.configuration;
 
 import static org.assertj.core.api.Assertions.*;
 
-import static org.assertj.core.api.Assertions.*;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;

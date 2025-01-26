@@ -14,7 +14,7 @@ class ParkingEndpointRepositoryTest {
     private DummyObject object;
     private static final String path = "data/statistics/tests";
 
-    static class InMemoryRepositoryTest extends ParkingDataRepository {
+    static class InMemoryRepositoryTest extends ParkingEndpointRepository {
         public InMemoryRepositoryTest() {
             super(path);
         }

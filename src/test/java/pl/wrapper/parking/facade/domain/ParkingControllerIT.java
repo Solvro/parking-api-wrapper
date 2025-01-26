@@ -18,6 +18,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.*;
 import org.springframework.test.web.servlet.MockMvc;
 import pl.wrapper.parking.facade.dto.NominatimLocation;
+import pl.wrapper.parking.infrastructure.inMemory.ParkingDataRepository;
 import pl.wrapper.parking.infrastructure.nominatim.client.NominatimClient;
 import pl.wrapper.parking.pwrResponseHandler.PwrApiServerCaller;
 import pl.wrapper.parking.pwrResponseHandler.dto.Address;
@@ -38,6 +39,9 @@ public class ParkingControllerIT {
 
     @MockBean
     private NominatimClient nominatimClient;
+
+    @MockBean
+    private ParkingDataRepository dataRepository;
 
     private List<ParkingResponse> parkings;
 
